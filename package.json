@@ -1,0 +1,8 @@
+{
+  "name": "geo-monitor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "probe": "node probe/probe.mjs"
+  }
+}

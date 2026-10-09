@@ -1,0 +1,42 @@
+name: 云端连通性体检
+
+on:
+  workflow_dispatch:
+    inputs:
+      question:
+        description: 提问内容
+        required: false
+        default: 幼猫猫粮有哪些推荐？
+      brand:
+        description: 要检测的品牌
+        required: false
+        default: 比乐
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: 安装 playwright
+        run: npm install playwright --no-fund --no-audit
+      - name: 安装 Chromium
+        run: npx playwright install --with-deps chromium
+      - name: 运行体检
+        env:
+          QUESTION: ${{ github.event.inputs.question }}
+          BRAND: ${{ github.event.inputs.brand }}
+        run: node probe/probe.mjs
+      - name: 提交结果
+        run: |
+          git config user.name "geo-bot"
+          git config user.email "geo-bot@users.noreply.github.com"
+          git add -A probe/out
+          git diff --cached --quiet && echo "无变化" || git commit -m "体检结果 $(date -u +%Y-%m-%d_%H:%M_UTC)"
+          git push

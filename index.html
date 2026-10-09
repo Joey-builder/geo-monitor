@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GEO 监测台 · 云端连通性体检</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--line:#e6e8ee;--txt:#1c2026;--sub:#6b7280;--blue:#2563eb;--green:#16a34a;--amber:#d97706;--red:#dc2626;--gray:#6b7280}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt)}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:18px 22px}
+  h1{margin:0 0 4px;font-size:18px}
+  .meta{color:var(--sub);font-size:12px}
+  main{max-width:1100px;margin:20px auto;padding:0 16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h2{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .badge{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid}
+  .b-ok{color:var(--green);border-color:var(--green)}
+  .b-login{color:var(--amber);border-color:var(--amber)}
+  .b-captcha{color:#b45309;border-color:#b45309}
+  .b-bad{color:var(--red);border-color:var(--red)}
+  .b-hit{color:var(--blue);border-color:var(--blue)}
+  .hit-no{color:var(--gray);border-color:var(--gray)}
+  .kv{font-size:12px;color:var(--sub);word-break:break-all}
+  img.shot{width:100%;border:1px solid var(--line);border-radius:8px;margin-top:8px;cursor:zoom-in}
+  .answer{font-size:12px;background:#fafbfc;border:1px dashed var(--line);border-radius:8px;padding:8px;margin-top:8px;max-height:160px;overflow:auto;white-space:pre-wrap}
+  a{color:var(--blue)}
+  .empty{color:var(--sub);text-align:center;padding:60px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>GEO 监测台 · 云端连通性体检</h1>
+  <div class="meta" id="meta">加载中…</div>
+</header>
+<main><div id="app" class="grid"></div></main>
+<script>
+const STATUS = {
+  ok:      { label: "可用",    cls: "b-ok" },
+  login:   { label: "需登录",  cls: "b-login" },
+  captcha: { label: "验证码",  cls: "b-captcha" },
+  timeout: { label: "无回答",  cls: "b-bad" },
+  "no-composer": { label: "无输入框", cls: "b-bad" },
+  error:   { label: "出错",    cls: "b-bad" },
+  blocked: { label: "被拦截",  cls: "b-bad" },
+};
+const esc = (s) => String(s || "").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+(async () => {
+  const app = document.getElementById("app");
+  try {
+    const res = await fetch("probe/out/results.json", { cache: "no-store" });
+    const data = await res.json();
+    document.getElementById("meta").textContent =
+      "运行时间：" + new Date(data.ranAt).toLocaleString("zh-CN") + " ｜ 提问：" + data.question + " ｜ 品牌：" + data.brand + " ｜ 出口：" + (data.egress || "?") + " ｜ " + (data.runner || "");
+    app.innerHTML = data.results.map((r) => {
+      const s = STATUS[r.status] || STATUS.error;
+      const hit = r.brandHit === true ? '<span class="badge b-hit">提到品牌</span>'
+                : r.brandHit === false ? '<span class="badge hit-no">未提到</span>' : "";
+      const urlLine = r.pageUrlAfter && r.pageUrlAfter !== r.url
+        ? '<div class="kv">会话链接：<a href="' + esc(r.pageUrlAfter) + '" target="_blank" rel="noopener">' + esc(r.pageUrlAfter) + '</a></div>' : "";
+      return '<div class="card">'
+        + '<h2>' + esc(r.name) + ' <span class="badge ' + s.cls + '">' + s.label + '</span> ' + hit + '</h2>'
+        + '<div class="kv">用时 ' + Math.round(r.ms / 1000) + 's ｜ 入口 <a href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.url) + '</a></div>'
+        + urlLine
+        + (r.note ? '<div class="kv">' + esc(r.note) + '</div>' : "")
+        + (r.shot ? '<a href="' + esc(r.shot) + '" target="_blank"><img class="shot" src="' + esc(r.shot) + '" loading="lazy"></a>' : "")
+        + (r.answerTail ? '<div class="answer">' + esc(r.answerTail) + '</div>' : "")
+        + '</div>';
+    }).join("");
+  } catch (e) {
+    document.getElementById("meta").textContent = "暂无体检结果";
+    app.innerHTML = '<div class="empty">还没有结果。去 GitHub 仓库的 Actions 里运行一次「云端连通性体检」，几分钟后刷新本页。</div>';
+  }
+})();
+</script>
+</body>
+</html>
